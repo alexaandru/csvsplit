@@ -24,7 +24,7 @@ var (
 func processCmdLineFlags(opts *options) {
 	flag.StringVar(&(*opts).source, "source", "", "Name of the source file (if not using stdin)")
 	flag.IntVar(&(*opts).repeatRows, "repeat", 1, "How many rows to repeat on subsequent files")
-	flag.IntVar(&(*opts).limit, "limit", 2, "Number of rows per output file (not counting repeated/header rows)")
+	flag.IntVar(&(*opts).limit, "limit", 1000, "Number of rows per output file (not counting repeated/header rows)")
 	flag.Parse()
 
 	if opts.source != "" {
