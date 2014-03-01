@@ -34,14 +34,6 @@ func processCmdLineFlags(opts *options) {
 	}
 }
 
-func stdinReady() bool {
-	if fi, err := os.Stdin.Stat(); err != nil {
-		return false
-	} else {
-		return fi.Mode()&os.ModeNamedPipe != 0 || fi.Size() > 0
-	}
-}
-
 func scan(what io.Reader, opts *options) {
 	defer curFile.Close()
 	scanner, i, repeats := bufio.NewScanner(what), 0, []string{}
@@ -73,24 +65,6 @@ func write(line string, i int, repeats *[]string, limit int) {
 	}
 
 	fmt.Fprintln(curFile, line)
-}
-
-func openFile(fname string) *os.File {
-	if f, err := os.Open(fname); err == nil {
-		return f
-	} else {
-		log.Fatal(err)
-		return nil
-	}
-}
-
-func createFile(fname string) *os.File {
-	if f, err := os.Create(fname); err == nil {
-		return f
-	} else {
-		log.Fatal(err)
-		return nil
-	}
 }
 
 func main() {
