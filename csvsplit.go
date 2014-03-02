@@ -36,15 +36,14 @@ func processCmdLineFlags(opts *options) {
 
 func scan(what io.Reader, opts *options) {
 	defer curFile.Close()
-	scanner, i, repeats := bufio.NewScanner(what), 0, []string{}
-	for i = 0; i < opts.repeatRows && scanner.Scan(); i++ {
+	scanner, lineno, repeats := bufio.NewScanner(what), 0, []string{}
+	for j := 0; j < opts.repeatRows && scanner.Scan(); j++ {
 		repeats = append(repeats, scanner.Text())
 	}
 
-	i = 0
 	for scanner.Scan() {
-		write(scanner.Text(), i, &repeats, opts.limit)
-		i++
+		write(scanner.Text(), lineno, &repeats, opts.limit)
+		lineno++
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -52,13 +51,13 @@ func scan(what io.Reader, opts *options) {
 	}
 }
 
-func write(line string, i int, repeats *[]string, limit int) {
-	if i%limit == 0 {
+func write(line string, lineno int, repeats *[]string, limit int) {
+	if lineno%limit == 0 {
 		if curFile != nil {
 			curFile.Close()
 		}
 
-		curFile = createFile(fmt.Sprintf("%s_%02d.csv", prefix, (i/limit)+1))
+		curFile = createFile(fmt.Sprintf("%s_%02d.csv", prefix, (lineno/limit)+1))
 		for _, repeat := range *repeats {
 			fmt.Fprintln(curFile, repeat)
 		}
