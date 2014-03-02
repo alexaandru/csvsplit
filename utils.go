@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 func stdinReady() bool {
@@ -26,4 +29,23 @@ func createFile(fname string) *os.File {
 		log.Fatal(err)
 		return nil
 	}
+}
+
+func determineFilePrefix(opts *options) string {
+	if opts.source != "" {
+		return strings.TrimSuffix(opts.source, filepath.Ext(opts.source))
+	}
+
+	return "file"
+}
+
+func bufWrite(buf *bufio.Writer, line string) {
+	if _, err := buf.WriteString(line); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func bufWriteln(buf *bufio.Writer, line string) {
+	bufWrite(buf, line)
+	bufWrite(buf, "\n")
 }

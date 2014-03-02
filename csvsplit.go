@@ -7,63 +7,70 @@ import (
 	"io"
 	"log"
 	"os"
-	"path/filepath"
-	"strings"
+	"runtime"
 )
 
 type options struct {
 	repeatRows, limit int
 	source            string
+	headerRows        []string
 }
-
-var (
-	curFile *os.File
-	prefix  string
-)
 
 func processCmdLineFlags(opts *options) {
 	flag.StringVar(&(*opts).source, "source", "", "Name of the source file (if not using stdin)")
 	flag.IntVar(&(*opts).repeatRows, "repeat", 1, "How many rows to repeat on subsequent files")
 	flag.IntVar(&(*opts).limit, "limit", 1000, "Number of rows per output file (not counting repeated/header rows)")
 	flag.Parse()
-
-	if opts.source != "" {
-		prefix = strings.TrimSuffix(opts.source, filepath.Ext(opts.source))
-	} else {
-		prefix = "file"
-	}
 }
 
 func scan(what io.Reader, opts *options) {
-	defer curFile.Close()
-	scanner, lineno, repeats := bufio.NewScanner(what), 0, []string{}
+	var f *os.File
+	scanner, write := bufio.NewScanner(what), makeWriter(opts)
 	for j := 0; j < opts.repeatRows && scanner.Scan(); j++ {
-		repeats = append(repeats, scanner.Text())
+		opts.headerRows = append(opts.headerRows, scanner.Text())
 	}
 
 	for scanner.Scan() {
-		write(scanner.Text(), lineno, &repeats, opts.limit)
-		lineno++
+		f = write(scanner.Text())
 	}
+	f.Close()
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func write(line string, lineno int, repeats *[]string, limit int) {
-	if lineno%limit == 0 {
-		if curFile != nil {
-			curFile.Close()
+func makeWriter(opts *options) func(line string) *os.File {
+	var curFile *os.File
+	var curBuf *bufio.Writer
+	lineno, prefix := 0, determineFilePrefix(opts)
+
+	return func(line string) *os.File {
+		if lineno%opts.limit == 0 { // Time to change the file
+			if curFile != nil {
+				if err := curBuf.Flush(); err != nil {
+					log.Fatal(err)
+				}
+				curFile.Close()
+			}
+
+			curFile = createFile(fmt.Sprintf("%s_%02d.csv", prefix, (lineno/opts.limit)+1))
+			curBuf = bufio.NewWriter(curFile)
+
+			for _, repeat := range opts.headerRows {
+				bufWriteln(curBuf, repeat)
+			}
 		}
 
-		curFile = createFile(fmt.Sprintf("%s_%02d.csv", prefix, (lineno/limit)+1))
-		for _, repeat := range *repeats {
-			fmt.Fprintln(curFile, repeat)
-		}
+		bufWriteln(curBuf, line)
+		lineno++
+
+		return curFile
 	}
+}
 
-	fmt.Fprintln(curFile, line)
+func init() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 }
 
 func main() {
