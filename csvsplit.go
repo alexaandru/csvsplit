@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"runtime"
 )
 
 type options struct {
@@ -40,12 +39,12 @@ func scan(what io.Reader, opts *options) {
 	}
 }
 
-func makeWriter(opts *options) func(line string) *os.File {
+func makeWriter(opts *options) func(string) *os.File {
 	var curFile *os.File
 	var curBuf *bufio.Writer
 	lineno, prefix := 0, determineFilePrefix(opts)
 
-	return func(line string) *os.File {
+	return func(row string) *os.File {
 		if lineno%opts.limit == 0 { // Time to change the file
 			if curFile != nil {
 				if err := curBuf.Flush(); err != nil {
@@ -57,20 +56,16 @@ func makeWriter(opts *options) func(line string) *os.File {
 			curFile = createFile(fmt.Sprintf("%s_%02d.csv", prefix, (lineno/opts.limit)+1))
 			curBuf = bufio.NewWriter(curFile)
 
-			for _, repeat := range opts.headerRows {
-				bufWriteln(curBuf, repeat)
+			for _, headerRow := range opts.headerRows {
+				bufWriteln(curBuf, headerRow)
 			}
 		}
 
-		bufWriteln(curBuf, line)
+		bufWriteln(curBuf, row)
 		lineno++
 
 		return curFile
 	}
-}
-
-func init() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
 }
 
 func main() {
